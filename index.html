@@ -23,9 +23,10 @@ th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--bd);white-s
 .out{color:var(--mut)}.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ac);margin-right:6px}
 .ban{background:var(--ac);color:#fff;border-radius:10px;padding:10px 12px;font-weight:600;margin-top:8px}
 .sel{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}.sel label{display:block;font-size:12px;color:var(--mut)}.sel select{width:100%}
-</style></head><body><main id="app"></main><div style="text-align:center;padding:0 16px 24px"><button id="lg">Scorer login</button></div>
+</style></head><body><main id="app"></main><div id="adm" style="max-width:760px;margin:0 auto;padding:0 16px 24px"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 let L=[],cid=null,M=null,db=null,coll=null,ref=null,unM=null,canW=true,shared=false,wp=false,xp=null,later=false,delId=null;
 const $=id=>document.getElementById(id),app=$('app');
@@ -88,7 +89,7 @@ function rmP(t,q){
 function homeView(){
   return'<div class="card"><h1>🏏 Cricket Scoreboard</h1><div class="mut">'+(shared?'<span class="live"></span>Live · matches are shared with everyone who opens this page':'Sharing unavailable in this view')+(canW?'':' · view only')+'</div></div>'+
   (canW?'<div class="card"><h2>New match</h2><div class="row" style="margin-bottom:8px"><input class="g" id="nm" placeholder="Match name (optional)"><input class="n" id="ov" type="number" min="1" max="50" value="5" title="Overs"><span class="mut">overs</span></div>'+
-  '<div class="row" style="margin-bottom:8px"><input class="g" id="ta" placeholder="Team A name"><input class="g" id="tb" placeholder="Team B name"></div>'+'<div class="row" style="margin-bottom:8px"><textarea id="pa" rows="3" placeholder="Team A players (commas or new lines)" style="'+TS+'"></textarea><textarea id="pb" rows="3" placeholder="Team B players (commas or new lines)" style="'+TS+'"></textarea></div>'+
+  '<div class="row" style="margin-bottom:8px"><input class="g" id="ta" placeholder="Team A name"><input class="g" id="tb" placeholder="Team B name"></div>'+'<div class="row" style="margin-bottom:8px"><textarea id="pa" rows="3" placeholder="Team A players (commas or new lines)" style="'+TS+'"></textarea><textarea id="pb" rows="3" placeholder="Team B players (commas or new lines)" style="'+TS+'"></textarea></div>'+(POOL.length?'<div class="mut">Saved players: tap to add to Team A</div><div class="chips" style="margin-bottom:8px">'+poolChips('pa')+'</div><div class="mut">Tap to add to Team B</div><div class="chips" style="margin-bottom:10px">'+poolChips('pb')+'</div>':'')+
   '<div class="row"><select id="fi"><option value="0">Team A bats first</option><option value="1">Team B bats first</option></select><button class="p" data-a="new">Create match</button></div></div>':'')+
   '<div class="card"><h2>Matches</h2>'+(L.length?L.map(m=>{const r=m.innings&&m.innings.length>1?result(m):'';return'<div class="row sp" style="padding:8px 0;border-bottom:1px solid var(--bd)"><div><div class="big">'+esc(m.name)+'</div><div class="mut">'+esc(m.teams[0].n)+' vs '+esc(m.teams[1].n)+' · '+m.overs+' overs'+(r?' · '+esc(r):'')+'</div></div><div class="row"><button data-a="open" data-id="'+m.id+'">Open</button>'+(canW?'<button class="w" data-a="del" data-id="'+m.id+'">'+(delId===m.id?'Tap again to confirm':'Delete')+'</button>':'')+'</div></div>'}).join(''):'<div class="mut">No matches yet.</div>')+'</div>';
 }
@@ -123,8 +124,8 @@ function matchView(){
       (xp?'<div class="row" style="margin-top:10px"><b>'+(xp==='bye'?'Bye':'Leg bye')+' runs:</b>'+[1,2,3,4].map(r=>'<button class="run" data-a="xr" data-v="'+r+'">'+r+'</button>').join('')+'<button data-a="xc">Cancel</button></div>':'')+
       (wp?'<div class="row" style="margin-top:10px"><select id="wk"><option value="bowled">Bowled</option><option value="caught">Caught</option><option value="lbw">LBW</option><option value="stumped">Stumped</option><option value="hit">Hit wicket</option><option value="run">Run out</option></select><select id="wo"><option value="0">Striker out</option><option value="1">Non-striker out (run out only)</option></select><input id="wr" class="n" type="number" min="0" max="6" value="0" title="Runs completed (run out only)"><input id="wf" class="g" placeholder="Fielder (optional)" maxlength="30"><button class="w" data-a="wok">Confirm wicket</button><button data-a="xc">Cancel</button></div><div class="mut">Run out: set runs completed and who is out. Other dismissals ignore these two.</div>':'')+
       '<div class="mut" style="margin-top:8px">Wide and no ball add no extra run and are re-bowled. A no ball counts only runs off the bat. No free hit.</div></div>';
-    h+='<div class="card"><div class="row"><button data-a="undo">Undo last ball</button>'+(!done?'<button data-a="swap">Swap strike</button>':'')+(k===0?'<button class="p" data-a="second">'+(done?'':'End innings & ')+'start 2nd innings</button>':'')+'</div>'+
-      '<div class="row" style="margin-top:10px"><select id="pt"><option value="0">'+esc(m.teams[0].n)+'</option><option value="1">'+esc(m.teams[1].n)+'</option></select><textarea id="pn" rows="2" placeholder="Add players: separate names with commas or new lines" style="'+TS+'"></textarea><button class="p" data-a="addp">Add players</button></div>'+manage(m)+'</div>';
+    h+='<div class="card"><div class="row"><button data-a="undo">Undo last ball</button><button data-a="rematch">Rematch (same players)</button>'+(!done?'<button data-a="swap">Swap strike</button>':'')+(k===0?'<button class="p" data-a="second">'+(done?'':'End innings & ')+'start 2nd innings</button>':'')+'</div>'+
+      '<div class="row" style="margin-top:10px"><select id="pt"><option value="0">'+esc(m.teams[0].n)+'</option><option value="1">'+esc(m.teams[1].n)+'</option></select><textarea id="pn" rows="2" placeholder="Add players: separate names with commas or new lines" style="'+TS+'"></textarea><button class="p" data-a="addp">Add players</button></div>'+(()=>{const c=poolChips('pn',m.teams[0].p.concat(m.teams[1].p));return c?'<div class="mut" style="margin-top:8px">Saved players: tap to add to the box</div><div class="chips">'+c+'</div>':''})()+manage(m)+'</div>';
   }
   const bi=t=>m.innings.findIndex(x=>x.bat===t);
   h+='<div class="card"><h2>Match totals</h2><div class="tw"><table><thead><tr><th>Team</th><th>Runs</th><th>Wkts</th><th>Overs</th><th>Legal balls</th><th>Deliveries</th></tr></thead><tbody>'+
@@ -146,10 +147,11 @@ app.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)retu
   else if(a==='new'){
     const p=(id,d)=>($(id).value.trim()||d).slice(0,40),ta=p('ta','Team A'),tb=p('tb','Team B');
     const m={name:p('nm',ta+' vs '+tb),teams:[{n:ta,p:names($('pa').value)},{n:tb,p:names($('pb').value)}],overs:Math.max(1,Math.min(50,parseInt($('ov').value)||5)),cur:0,t:Date.now(),innings:[{bat:+$('fi').value,balls:[],st:null,ns:null,bw:null,lb:null}]};
-    if(coll){const r=coll.doc();r.set(m).then(()=>openM(r.id)).catch(x=>alert('Could not create: '+x.message))}else{M=m;render()}}
+    savePool(names($('pa').value).concat(names($('pb').value)));if(coll){const r=coll.doc();r.set(m).then(()=>openM(r.id)).catch(x=>alert('Could not create: '+x.message))}else{M=m;render()}}
   else if(a==='del'){const id=b.dataset.id;
     if(delId!==id){delId=id;render();setTimeout(()=>{if(delId===id){delId=null;render()}},4000)}
     else{delId=null;L=L.filter(m=>m.id!==id);render();if(coll)coll.doc(id).delete().catch(x=>alert('Could not delete: '+(x&&x.message||x)))}}
+  else if(a==='pc'){const t=$(b.dataset.t),n=b.dataset.n;if(!names(t.value).includes(n))t.value=(t.value.trim()?t.value.trim()+', ':'')+n}
   else if(!M)return;
   else if(a==='run')score(+b.dataset.v,'');
   else if(a==='wd')score(0,'wd');
@@ -164,7 +166,8 @@ app.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)retu
   else if(a==='undo')undo();
   else if(a==='swap'){const i=M.innings[M.cur];[i.st,i.ns]=[i.ns,i.st];save()}
   else if(a==='second'){if(confirm('Start the 2nd innings now? The 1st innings will be closed.')){M.innings=[M.innings[0],{bat:1-M.innings[0].bat,balls:[],st:null,ns:null,bw:null,lb:null}];M.cur=1;save()}}
-  else if(a==='addp'){const v=names($('pn').value);if(!v.length)return;M.teams[+$('pt').value].p.push(...v);$('pn').value='';save()}
+  else if(a==='addp'){const v=names($('pn').value);if(!v.length)return;M.teams[+$('pt').value].p.push(...v);savePool(v);$('pn').value='';save()}
+  else if(a==='rematch'){const t=M.teams,m={name:t[0].n+' vs '+t[1].n+' (rematch)',teams:[{n:t[0].n,p:t[0].p.slice()},{n:t[1].n,p:t[1].p.slice()}],overs:M.overs,cur:0,t:Date.now(),innings:[{bat:1-M.innings[0].bat,balls:[],st:null,ns:null,bw:null,lb:null}]};if(coll){const r=coll.doc();r.set(m).then(()=>openM(r.id)).catch(x=>alert('Could not create: '+x.message))}}
 });
 app.addEventListener('change',e=>{const s=e.target.dataset&&e.target.dataset.s;if(!s||!M)return;const i=M.innings[M.cur],v=e.target.value===''?null:+e.target.value;
   if(s==='bw'&&v!==null&&v===i.lb){alert('The same bowler cannot bowl two overs in a row.');render();return}
@@ -176,19 +179,27 @@ function openM(id){
   if(!coll)return;
   ref=coll.doc(id);unM=ref.onSnapshot(s=>{M=s.exists?JSON.parse(JSON.stringify(s.data())):null;render()},e=>alert('Live connection lost: '+e.message));
 }
-/* ====== SETUP: paste your Firebase config and choose a scorer PIN ====== */
+/* ====== SETUP: your Firebase config + the ONE admin email ====== */
 const FB={apiKey:"AIzaSyCfqh-A54MIvTMqn0qpuArLVcCi_z9ZU2M",authDomain:"cricket-scoreboard-a2711.firebaseapp.com",projectId:"cricket-scoreboard-a2711",appId:"1:1069597509397:web:2b5cab9482bacb56010b1c"};
-const SCORER_PIN="1234";
-/* ======================================================================= */
-canW=localStorage.getItem('pin')===SCORER_PIN;
-$('lg').onclick=()=>{const p=prompt('Scorer PIN');if(p===null)return;if(p===SCORER_PIN){localStorage.setItem('pin',p);canW=true}else{localStorage.removeItem('pin');canW=false;alert('Wrong PIN')}render()};
+const ADMIN_EMAIL="admin@cricket-scoreboard.app";const PIN_SUFFIX="-cricket";
+/* ================================================================ */
+let POOL=[],fs=null;canW=false;
+function poolChips(t,ex){return POOL.filter(n=>!(ex||[]).includes(n)).map(n=>'<button class="chip" data-a="pc" data-t="'+t+'" data-n="'+esc(n)+'">'+esc(n)+'</button>').join('')}
+function savePool(v){const st=new Set(POOL);let ch=false;v.forEach(n=>{if(!st.has(n)){st.add(n);ch=true}});if(ch&&fs&&canW)fs.collection('meta').doc('pool').set({names:Array.from(st).sort()}).catch(()=>{})}
+function adminLogin(){const p=$('pin').value.trim();if(!p)return;firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL,p+PIN_SUFFIX).catch(x=>alert(/invalid|wrong|user-not-found/.test(x.code||'')?'Wrong PIN':'Login problem: '+x.message))}
+function adminUI(){$('adm').innerHTML=canW?'<div class="row sp"><span class="mut">Admin mode: you can edit scores</span><button id="lo">Log out</button></div>':'<details><summary class="mut" style="cursor:pointer">Admin login</summary><div class="row" style="margin-top:8px"><input id="pin" class="g" type="password" inputmode="numeric" placeholder="Admin PIN"><button class="p" id="li">Log in</button></div></details>'}
+$('adm').addEventListener('click',e=>{
+  if(e.target.id==='li')adminLogin();
+  if(e.target.id==='lo')firebase.auth().signOut()});
+$('adm').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pin')adminLogin()});
 (function(){
-  render();
-  if(!window.firebase||FB.apiKey.indexOf('PASTE')===0){app.insertAdjacentHTML('afterbegin','<div class="card"><b>Setup needed:</b> open this file and paste your Firebase config at the top of the script (see the steps I sent).</div>');return}
+  render();adminUI();
+  if(!window.firebase||FB.apiKey.indexOf('PASTE')===0){app.insertAdjacentHTML('afterbegin','<div class="card"><b>Setup needed:</b> paste your Firebase config at the top of the script.</div>');return}
   try{
-    firebase.initializeApp(FB);
-    coll=firebase.firestore().collection('matches');shared=true;
+    firebase.initializeApp(FB);fs=firebase.firestore();coll=fs.collection('matches');shared=true;
+    firebase.auth().onAuthStateChanged(u=>{canW=!!u&&(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();adminUI();render()});
     coll.orderBy('t','desc').limit(200).onSnapshot(s=>{L=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!M)render()},e=>{shared=false;alert('Database error: '+e.message);render()});
+    fs.collection('meta').doc('pool').onSnapshot(s=>{POOL=s.exists?(s.data().names||[]):[];render()},()=>{});
   }catch(e){alert('Firebase error: '+e.message)}
 })();
 </script></body></html>
